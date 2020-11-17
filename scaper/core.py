@@ -1290,8 +1290,10 @@ class Scaper(object):
     def _instantiate_event(self, event, isbackground=False,
                            allow_repeated_label=True,
                            allow_repeated_source=True,
+                           allow_global_repeated_source=True,
                            used_labels=[],
                            used_source_files=[],
+                           global_used_source_files=[],
                            disable_instantiation_warnings=False):
         '''
         Instantiate an event specification.
@@ -1323,6 +1325,11 @@ class Scaper(object):
             instantiation. The label selected for instantiating the event will
             be appended to this list unless its already in it.
         used_source_files : list
+            List of full paths to source files that have already been used in
+            the current soundscape instantiation. The source file selected for
+            instantiating the event will be appended to this list unless its
+            already in it.
+        global_used_source_files : list
             List of full paths to source files that have already been used in
             the current soundscape instantiation. The source file selected for
             instantiating the event will be appended to this list unless its
@@ -1383,6 +1390,7 @@ class Scaper(object):
         if event.source_file[0] == "choose" and not event.source_file[1]:
             source_files = _get_sorted_files(
                 os.path.join(file_path, label))
+            source_files = list(set(source_files).difference_update(global_used_source_files))
             source_file_tuple = list(event.source_file)
             source_file_tuple[1] = source_files
             source_file_tuple = tuple(source_file_tuple)
@@ -1407,6 +1415,10 @@ class Scaper(object):
         # Update the used source files list
         if source_file not in used_source_files:
             used_source_files.append(source_file)
+
+        # Update the global used source files list
+        if not allow_global_repeated_source :
+            global_used_source_files.append(source_file)
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
@@ -1595,7 +1607,9 @@ class Scaper(object):
         return instantiated_event
 
     def _instantiate(self, allow_repeated_label=True,
-                     allow_repeated_source=True, reverb=None,
+                     allow_repeated_source=True,
+                     allow_global_repeated_source=True,
+                     reverb=None,
                      disable_instantiation_warnings=False):
         '''
         Instantiate a specific soundscape in JAMS format based on the current
@@ -1652,6 +1666,7 @@ class Scaper(object):
                 isbackground=True,
                 allow_repeated_label=allow_repeated_label,
                 allow_repeated_source=allow_repeated_source,
+                allow_global_repeated_source=allow_global_repeated_source,
                 used_labels=bg_labels,
                 used_source_files=bg_source_files,
                 disable_instantiation_warnings=disable_instantiation_warnings)
@@ -1673,6 +1688,7 @@ class Scaper(object):
                 isbackground=False,
                 allow_repeated_label=allow_repeated_label,
                 allow_repeated_source=allow_repeated_source,
+                allow_global_repeated_source=allow_global_repeated_source,
                 used_labels=fg_labels,
                 used_source_files=fg_source_files,
                 disable_instantiation_warnings=disable_instantiation_warnings)
