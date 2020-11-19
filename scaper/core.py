@@ -1008,6 +1008,8 @@ class Scaper(object):
         # Duration must be a positive real number
         if np.isrealobj(duration) and duration > 0:
             self.duration = duration
+        elif duration is None:
+            self.duration = None
         else:
             raise ScaperError('Duration must be a positive real value')
 
@@ -1422,6 +1424,8 @@ class Scaper(object):
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
+
+        max_duration
 
         # If this is a background event, the event duration is the 
         # duration of the soundscape.
@@ -1880,8 +1884,12 @@ class Scaper(object):
                 if e.value['role'] == 'background':
                     # Concatenate background if necessary.
                     source_duration = soundfile.info(e.value['source_file']).duration
-                    ntiles = int(
-                        max(self.duration // source_duration + 1, 1))
+                    if self.duration is not None:
+                        ntiles = int(
+                            max(self.duration // source_duration + 1, 1))
+                    else :
+                        ntiles = int(
+                            max(max_duration // source_duration + 1, 1))
 
                     # Create transformer
                     tfm = sox.Transformer()
