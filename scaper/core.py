@@ -1022,6 +1022,12 @@ class Scaper(object):
         self.fg_spec = []
         self.bg_spec = []
 
+        # Start with empty used source_file
+        self.global_used_source_files = []
+
+        # Start with empty used labels
+        self.global_used_labels = []
+        
         # Validate paths and set
         expanded_fg_path = os.path.expanduser(fg_path)
         expanded_bg_path = os.path.expanduser(bg_path)
@@ -1066,9 +1072,54 @@ class Scaper(object):
         See Also
         --------
         Scaper.reset_fg_event_spec : Same functionality but resets the foreground
+        event specification instead of the background specification.
+        '''
+        self.bg_spec = []    
+        
+    def reset_global_used(self):
+        '''
+        Resets the global_used_source_files to be an empty list as it is when
+        the Scaper object is initialized in the first place. This allows the same
+        Scaper object to be used over and over again to generate new soundscapes
+        with the same underlying settings (e.g. `ref_db`, `num_channels`, and so on.)
+
+        See Also
+        --------
+        Scaper.reset_fg_event_spec : Same functionality but resets the foreground
         event specification instead of the foreground specification.
         '''
-        self.bg_spec = []
+        self.global_used_source_files = []
+
+    def reset_global_used_labels(self):
+        '''
+        Resets the global_used_labels to be an empty list as it is when
+        the Scaper object is initialized in the first place. This allows the same
+        Scaper object to be used over and over again to generate new soundscapes
+        with the same underlying settings (e.g. `ref_db`, `num_channels`, and so on.)
+
+        See Also
+        --------
+        Scaper.reset_fg_event_spec : Same functionality but resets the foreground
+        event specification instead of the foreground specification.
+        '''
+        self.global_used_labels = []
+    
+    def reset_all(self):
+        '''
+        Resets the all lists to be an empty lists as it is when
+        the Scaper object is initialized in the first place. This allows the same
+        Scaper object to be used over and over again to generate new soundscapes
+        with the same underlying settings (e.g. `ref_db`, `num_channels`, and so on.)
+    
+        See Also
+        --------
+        Scaper.reset_fg_event_spec : Same functionality but resets the foreground
+        event specification instead of all the lists.
+        '''
+        self.reset_fg_event_spec()
+        self.reset_bg_event_spec()
+        self.reset_global_used()
+        self.reset_global_used_labels()
 
     def set_random_state(self, random_state):
         '''
@@ -1293,7 +1344,6 @@ class Scaper(object):
                            allow_global_repeated_source=True,
                            used_labels=[],
                            used_source_files=[],
-                           global_used_source_files=[],
                            disable_instantiation_warnings=False):
         '''
         Instantiate an event specification.
@@ -1320,16 +1370,16 @@ class Scaper(object):
             be used, including a source file that has already been used for
             another event. When False, only a source file that is not already
             in ``used_source_files`` can be selected.
+        allow_global_repeated_source : bool
+            When True (default) any source file matching the selected label can
+            be used, including a source file that has already been used for
+            another event. When False, only a source file that is not already
+            in ``used_source_files`` can be selected.
         used_labels : list
             List labels that have already been used in the current soundscape
             instantiation. The label selected for instantiating the event will
             be appended to this list unless its already in it.
         used_source_files : list
-            List of full paths to source files that have already been used in
-            the current soundscape instantiation. The source file selected for
-            instantiating the event will be appended to this list unless its
-            already in it.
-        global_used_source_files : list
             List of full paths to source files that have already been used in
             the current soundscape instantiation. The source file selected for
             instantiating the event will be appended to this list unless its
@@ -1382,6 +1432,19 @@ class Scaper(object):
                 while label in used_labels:
                     label = _get_value_from_dist(label_tuple, self.random_state)
 
+        # Make sure we can globally use this label
+        if (not allow_global_repeated_source) and (label in self.global_used_labels):
+            print(f'labels{allowed_labels} ,used_labels {self.global_used_labels}')
+            if (set(allowed_labels).issubset(set(self.global_used_labels)) or
+                    label_tuple[0] == "const"):
+                raise ScaperError(
+                    "Cannot instantiate event {:s}: all available labels "
+                    "have already globally been used and "
+                    "allow_global_repeated_source=False.".format(label))
+            else:
+                while label in self.global_used_labels:
+                    label = _get_value_from_dist(label_tuple, self.random_state)
+
         # Update the used labels list
         if label not in used_labels:
             used_labels.append(label)
@@ -1390,7 +1453,6 @@ class Scaper(object):
         if event.source_file[0] == "choose" and not event.source_file[1]:
             source_files = _get_sorted_files(
                 os.path.join(file_path, label))
-            source_files = list(set(source_files).difference_update(global_used_source_files))
             source_file_tuple = list(event.source_file)
             source_file_tuple[1] = source_files
             source_file_tuple = tuple(source_file_tuple)
@@ -1412,13 +1474,32 @@ class Scaper(object):
                 while source_file in used_source_files:
                     source_file = _get_value_from_dist(source_file_tuple, self.random_state)
 
+        # Make sure sure we can globally use this source file
+        if (not allow_global_repeated_source) and (source_file in self.global_used_source_files):
+            source_files = _get_sorted_files(os.path.join(file_path, label))
+            if (len(source_files) == len(self.global_used_source_files) or
+                    source_file_tuple[0] == "const"):
+                raise ScaperError(
+                    "Cannot instantiate event {:s}: all available source "
+                    "files have globally already been used and "
+                    "allow_repeated_source=False.".format(label))
+            else:
+                while source_file in self.global_used_source_files:
+                    source_file = _get_value_from_dist(source_file_tuple, self.random_state)
+
         # Update the used source files list
         if source_file not in used_source_files:
             used_source_files.append(source_file)
 
         # Update the global used source files list
-        if not allow_global_repeated_source :
-            global_used_source_files.append(source_file)
+        if not allow_global_repeated_source:
+            self.global_used_source_files.append(source_file)
+
+        # Update global used labels list
+        if set(source_files).issubset(set(self.global_used_source_files)):
+            self.global_used_labels.append(label)
+
+        print(source_file)
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
@@ -1734,6 +1815,7 @@ class Scaper(object):
             polyphony_gini=gini,
             allow_repeated_label=allow_repeated_label,
             allow_repeated_source=allow_repeated_source,
+            allow_global_repeated_source=allow_global_repeated_source,
             reverb=reverb,
             scaper_version=scaper_version,
             soundscape_audio_path=None,
@@ -2127,6 +2209,7 @@ class Scaper(object):
                  jams_path=None,
                  allow_repeated_label=True,
                  allow_repeated_source=True,
+                 allow_global_repeated_source=True,
                  reverb=None,
                  fix_clipping=False,
                  peak_normalization=False,
@@ -2269,6 +2352,7 @@ class Scaper(object):
         soundscape_jam = self._instantiate(
             allow_repeated_label=allow_repeated_label,
             allow_repeated_source=allow_repeated_source,
+            allow_global_repeated_source=allow_global_repeated_source,
             reverb=reverb,
             disable_instantiation_warnings=disable_instantiation_warnings)
         ann = soundscape_jam.annotations.search(namespace='scaper')[0]
@@ -2295,6 +2379,7 @@ class Scaper(object):
         ann.sandbox.scaper.jams_path = jams_path
         ann.sandbox.scaper.allow_repeated_label = allow_repeated_label
         ann.sandbox.scaper.allow_repeated_source = allow_repeated_source
+        ann.sandbox.scaper.allow_global_repeated_source = allow_global_repeated_source
         ann.sandbox.scaper.reverb = reverb
         ann.sandbox.scaper.fix_clipping = fix_clipping
         ann.sandbox.scaper.peak_normalization = peak_normalization
