@@ -1287,6 +1287,210 @@ class Scaper(object):
         # Add event to foreground specification
         self.fg_spec.append(event)
 
+    def add_SSN(self, source_file, event_time, event_duration, snr,
+                pitch_shift, time_stretch):
+        '''
+        Add a foreground sound event to the foreground specification.
+
+        Parameters
+        ----------
+
+        source_file : tuple
+            Specifies the audio file to use as the source. See Notes below for
+            the expected format of this tuple and the allowed values.
+            NOTE: If ``source_file`` is specified using "const" (see Notes),
+            then ``label`` must also be specified using "const" and its
+            ``value`` (see Notes) must match the source file's parent
+            folder's name.
+        event_time : tuple
+            Specifies the desired start time of the event in the soundscape.
+            See Notes below for the expected format of this tuple and the
+            allowed values.
+            NOTE: The value specified by this tuple should be equal to or
+            smaller than ``<soundscapes duration> - event_duration``, and
+            larger values will be automatically changed to fulfill this
+            requirement when calling ``Scaper.generate``.
+        event_duration : tuple
+            Specifies the desired duration of the event. See Notes below for
+            the expected format of this tuple and the allowed values.
+            NOTE: The value specified by this tuple should be equal to or
+            smaller than the source file's duration, and larger values will be
+            automatically changed to fulfill this requirement when calling
+            ``Scaper.generate``.
+        snr : tuple
+            Specifies the desired signal to noise ratio (SNR) between the event
+            and the background. See Notes below for the expected format of
+            this tuple and the allowed values.
+        pitch_shift : tuple
+            Specifies the number of semitones to shift the event by. None means
+            no pitch shift.
+        time_stretch: tuple
+            Specifies the time stretch factor (value>1 will make it slower and
+            longer, value<1 will makes it faster and shorter).
+
+        Notes
+        -----
+        Each parameter of this function is set by passing a distribution
+        tuple, whose first item is always the distribution name and subsequent
+        items are distribution specific. The supported distribution tuples are:
+
+        * ``("const", value)`` : a constant, given by ``value``.
+        * ``("choose", valuelist)`` : choose a value from
+          ``valuelist`` at random (uniformly). The ``label`` and
+          ``source_file`` parameters also support providing an empty
+          ``valuelist`` i.e. ``("choose", [])``, in which case the
+          value will be chosen at random from all available labels or
+          source files as determined automatically by Scaper by examining
+          the file structure of ``fg_path`` provided during
+          initialization.
+        * ``("uniform", min_value, max_value)`` : sample a random
+          value from a uniform distribution between ``min_value``
+          and ``max_value`` (including ``max_value``).
+        * ``("normal", mean, stddev)`` : sample a random value from a
+          normal distribution defined by its mean ``mean`` and
+          standard deviation ``stddev``.
+
+        IMPORTANT: not all parameters support all distribution tuples. In
+        particular, ``label`` and ``source_file`` only support ``"const"`` and
+        ``"choose"``, whereas the remaining parameters support all distribution
+        tuples. As noted above, only ``label`` and ``source_file`` support
+        providing an empty ``valuelist`` with ``"choose"``.
+
+        See Also
+        --------
+        _validate_event : Check that event parameter values are valid.
+
+        Scaper.generate : Generate a soundscape based on the current
+            specification and save to disk as both an audio file and a JAMS file
+            describing the soundscape.
+
+        '''
+
+        # These values are fixed for the background sound
+        label = ("const", 'SSN')
+        source_time = ("const", 0)
+
+        # SAFETY CHECKS
+        _validate_event(label, source_file, source_time, event_time,
+                        event_duration, snr, self.fg_labels, pitch_shift,
+                        time_stretch)
+
+        # Create event
+        event = EventSpec(label=label,
+                          source_file=source_file,
+                          source_time=source_time,
+                          event_time=event_time,
+                          event_duration=event_duration,
+                          snr=snr,
+                          role='foreground',
+                          pitch_shift=pitch_shift,
+                          time_stretch=time_stretch)
+
+        # Add event to foreground specification
+        self.fg_spec.append(event)
+
+    def add_WGN(self, source_file, event_time, event_duration, snr,
+                pitch_shift, time_stretch):
+        '''
+        Add a foreground sound event to the foreground specification.
+
+        Parameters
+        ----------
+
+        source_file : tuple
+            Specifies the audio file to use as the source. See Notes below for
+            the expected format of this tuple and the allowed values.
+            NOTE: If ``source_file`` is specified using "const" (see Notes),
+            then ``label`` must also be specified using "const" and its
+            ``value`` (see Notes) must match the source file's parent
+            folder's name.
+        event_time : tuple
+            Specifies the desired start time of the event in the soundscape.
+            See Notes below for the expected format of this tuple and the
+            allowed values.
+            NOTE: The value specified by this tuple should be equal to or
+            smaller than ``<soundscapes duration> - event_duration``, and
+            larger values will be automatically changed to fulfill this
+            requirement when calling ``Scaper.generate``.
+        event_duration : tuple
+            Specifies the desired duration of the event. See Notes below for
+            the expected format of this tuple and the allowed values.
+            NOTE: The value specified by this tuple should be equal to or
+            smaller than the source file's duration, and larger values will be
+            automatically changed to fulfill this requirement when calling
+            ``Scaper.generate``.
+        snr : tuple
+            Specifies the desired signal to noise ratio (SNR) between the event
+            and the background. See Notes below for the expected format of
+            this tuple and the allowed values.
+        pitch_shift : tuple
+            Specifies the number of semitones to shift the event by. None means
+            no pitch shift.
+        time_stretch: tuple
+            Specifies the time stretch factor (value>1 will make it slower and
+            longer, value<1 will makes it faster and shorter).
+
+        Notes
+        -----
+        Each parameter of this function is set by passing a distribution
+        tuple, whose first item is always the distribution name and subsequent
+        items are distribution specific. The supported distribution tuples are:
+
+        * ``("const", value)`` : a constant, given by ``value``.
+        * ``("choose", valuelist)`` : choose a value from
+          ``valuelist`` at random (uniformly). The ``label`` and
+          ``source_file`` parameters also support providing an empty
+          ``valuelist`` i.e. ``("choose", [])``, in which case the
+          value will be chosen at random from all available labels or
+          source files as determined automatically by Scaper by examining
+          the file structure of ``fg_path`` provided during
+          initialization.
+        * ``("uniform", min_value, max_value)`` : sample a random
+          value from a uniform distribution between ``min_value``
+          and ``max_value`` (including ``max_value``).
+        * ``("normal", mean, stddev)`` : sample a random value from a
+          normal distribution defined by its mean ``mean`` and
+          standard deviation ``stddev``.
+
+        IMPORTANT: not all parameters support all distribution tuples. In
+        particular, ``label`` and ``source_file`` only support ``"const"`` and
+        ``"choose"``, whereas the remaining parameters support all distribution
+        tuples. As noted above, only ``label`` and ``source_file`` support
+        providing an empty ``valuelist`` with ``"choose"``.
+
+        See Also
+        --------
+        _validate_event : Check that event parameter values are valid.
+
+        Scaper.generate : Generate a soundscape based on the current
+            specification and save to disk as both an audio file and a JAMS file
+            describing the soundscape.
+
+        '''
+
+        # These values are fixed for the background sound
+        label = ("const", 'WGN')
+        source_time = ("const", 0)
+
+        # SAFETY CHECKS
+        _validate_event(label, source_file, source_time, event_time,
+                        event_duration, snr, self.fg_labels, pitch_shift,
+                        time_stretch)
+
+        # Create event
+        event = EventSpec(label=label,
+                          source_file=source_file,
+                          source_time=source_time,
+                          event_time=event_time,
+                          event_duration=event_duration,
+                          snr=snr,
+                          role='foreground',
+                          pitch_shift=pitch_shift,
+                          time_stretch=time_stretch)
+
+        # Add event to foreground specification
+        self.fg_spec.append(event)
+
     def _instantiate_event(self, event, isbackground=False,
                            allow_repeated_label=True,
                            allow_repeated_source=True,
