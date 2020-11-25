@@ -1006,6 +1006,7 @@ class Scaper(object):
             it elsewhere.
         '''
         # Duration must be a positive real number
+
         if np.isrealobj(duration) and duration > 0:
             self.duration = duration
         elif duration is None:
@@ -1023,6 +1024,9 @@ class Scaper(object):
         # Start with empty specifications
         self.fg_spec = []
         self.bg_spec = []
+
+        # Start with 0 for max_duration
+        self.max_duration = 0
 
         # Validate paths and set
         expanded_fg_path = os.path.expanduser(fg_path)
@@ -1071,6 +1075,9 @@ class Scaper(object):
         event specification instead of the foreground specification.
         '''
         self.bg_spec = []
+
+    def reset_max_duration(self):
+        self.max_duration = 0
 
     def set_random_state(self, random_state):
         '''
@@ -1425,12 +1432,22 @@ class Scaper(object):
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
 
-        max_duration
+        if self.protected_labels and not isbackground:
+            self.max_duration = source_duration
 
-        # If this is a background event, the event duration is the 
+        # If this is a background event, the event duration is the
         # duration of the soundscape.
-        if isbackground:
+        if isbackground and not self.protected_labels:
             event_duration = self.duration
+        elif isbackground and self.protected_labels:
+            if self.max_duration == 0:
+                raise ScaperError(
+                    "You must Add all your foreground events before the "
+                    "background events when using protected labels"
+                )
+            else:
+                event_duration = self.max_duration
+
         # If the foreground event's label is in the protected list, use the
         # source file's duration without modification.
         elif label in self.protected_labels:
