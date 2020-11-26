@@ -1006,11 +1006,8 @@ class Scaper(object):
             it elsewhere.
         '''
         # Duration must be a positive real number
-
         if np.isrealobj(duration) and duration > 0:
             self.duration = duration
-        elif duration is None:
-            self.duration = None
         else:
             raise ScaperError('Duration must be a positive real value')
 
@@ -1026,7 +1023,7 @@ class Scaper(object):
         self.bg_spec = []
 
         # Start with 0 for max_duration
-        self.max_duration = 0
+        self.ini_duration = self.duration
 
         # Validate paths and set
         expanded_fg_path = os.path.expanduser(fg_path)
@@ -1076,8 +1073,8 @@ class Scaper(object):
         '''
         self.bg_spec = []
 
-    def reset_max_duration(self):
-        self.max_duration = 0
+    def reset_duration(self):
+        self.duration = self.ini_duration
 
     def set_random_state(self, random_state):
         '''
@@ -1299,10 +1296,8 @@ class Scaper(object):
     def _instantiate_event(self, event, isbackground=False,
                            allow_repeated_label=True,
                            allow_repeated_source=True,
-                           allow_global_repeated_source=True,
                            used_labels=[],
                            used_source_files=[],
-                           global_used_source_files=[],
                            disable_instantiation_warnings=False):
         '''
         Instantiate an event specification.
@@ -1334,11 +1329,6 @@ class Scaper(object):
             instantiation. The label selected for instantiating the event will
             be appended to this list unless its already in it.
         used_source_files : list
-            List of full paths to source files that have already been used in
-            the current soundscape instantiation. The source file selected for
-            instantiating the event will be appended to this list unless its
-            already in it.
-        global_used_source_files : list
             List of full paths to source files that have already been used in
             the current soundscape instantiation. The source file selected for
             instantiating the event will be appended to this list unless its
@@ -1399,7 +1389,6 @@ class Scaper(object):
         if event.source_file[0] == "choose" and not event.source_file[1]:
             source_files = _get_sorted_files(
                 os.path.join(file_path, label))
-            source_files = list(set(source_files).difference_update(global_used_source_files))
             source_file_tuple = list(event.source_file)
             source_file_tuple[1] = source_files
             source_file_tuple = tuple(source_file_tuple)
@@ -1425,33 +1414,20 @@ class Scaper(object):
         if source_file not in used_source_files:
             used_source_files.append(source_file)
 
-        # Update the global used source files list
-        if not allow_global_repeated_source :
-            global_used_source_files.append(source_file)
-
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
 
-        if self.protected_labels and not isbackground:
-            self.max_duration = source_duration
-
         # If this is a background event, the event duration is the
         # duration of the soundscape.
-        if isbackground and not self.protected_labels:
+        if isbackground:
             event_duration = self.duration
-        elif isbackground and self.protected_labels:
-            if self.max_duration == 0:
-                raise ScaperError(
-                    "You must Add all your foreground events before the "
-                    "background events when using protected labels"
-                )
-            else:
-                event_duration = self.max_duration
-
         # If the foreground event's label is in the protected list, use the
         # source file's duration without modification.
+
         elif label in self.protected_labels:
             event_duration = source_duration
+            if self.duration < source_duration:
+                self.duration = source_duration
         else:
             # determine event duration
             # For background events the duration is fixed to self.duration
@@ -1625,12 +1601,11 @@ class Scaper(object):
                                        pitch_shift=pitch_shift,
                                        time_stretch=time_stretch)
         # Return
+        print(instantiated_event)
         return instantiated_event
 
     def _instantiate(self, allow_repeated_label=True,
-                     allow_repeated_source=True,
-                     allow_global_repeated_source=True,
-                     reverb=None,
+                     allow_repeated_source=True, reverb=None,
                      disable_instantiation_warnings=False):
         '''
         Instantiate a specific soundscape in JAMS format based on the current
@@ -1678,28 +1653,6 @@ class Scaper(object):
         # INSTANTIATE BACKGROUND AND FOREGROUND EVENTS AND ADD TO ANNOTATION
         # NOTE: logic for instantiating bg and fg events is NOT the same.
 
-        # Add background sounds
-        bg_labels = []
-        bg_source_files = []
-        for event in self.bg_spec:
-            value = self._instantiate_event(
-                event,
-                isbackground=True,
-                allow_repeated_label=allow_repeated_label,
-                allow_repeated_source=allow_repeated_source,
-                allow_global_repeated_source=allow_global_repeated_source,
-                used_labels=bg_labels,
-                used_source_files=bg_source_files,
-                disable_instantiation_warnings=disable_instantiation_warnings)
-
-            # Note: add_background doesn't allow to set a time_stretch, i.e.
-            # it's hardcoded to time_stretch=None, so we don't need to check
-            # if value.time_stretch is not None, since it always will be.
-            ann.append(time=value.event_time,
-                       duration=value.event_duration,
-                       value=value._asdict(),
-                       confidence=1.0)
-
         # Add foreground events
         fg_labels = []
         fg_source_files = []
@@ -1709,7 +1662,6 @@ class Scaper(object):
                 isbackground=False,
                 allow_repeated_label=allow_repeated_label,
                 allow_repeated_source=allow_repeated_source,
-                allow_global_repeated_source=allow_global_repeated_source,
                 used_labels=fg_labels,
                 used_source_files=fg_source_files,
                 disable_instantiation_warnings=disable_instantiation_warnings)
@@ -1724,6 +1676,27 @@ class Scaper(object):
                        duration=event_duration_stretched,
                        value=value._asdict(),
                        confidence=1.0)
+
+            # Add background sounds
+            bg_labels = []
+            bg_source_files = []
+            for event in self.bg_spec:
+                value = self._instantiate_event(
+                    event,
+                    isbackground=True,
+                    allow_repeated_label=allow_repeated_label,
+                    allow_repeated_source=allow_repeated_source,
+                    used_labels=bg_labels,
+                    used_source_files=bg_source_files,
+                    disable_instantiation_warnings=disable_instantiation_warnings)
+
+                # Note: add_background doesn't allow to set a time_stretch, i.e.
+                # it's hardcoded to time_stretch=None, so we don't need to check
+                # if value.time_stretch is not None, since it always will be.
+                ann.append(time=value.event_time,
+                           duration=value.event_duration,
+                           value=value._asdict(),
+                           confidence=1.0)
 
         # Compute max polyphony
         poly = max_polyphony(ann)
@@ -1901,12 +1874,8 @@ class Scaper(object):
                 if e.value['role'] == 'background':
                     # Concatenate background if necessary.
                     source_duration = soundfile.info(e.value['source_file']).duration
-                    if self.duration is not None:
-                        ntiles = int(
-                            max(self.duration // source_duration + 1, 1))
-                    else :
-                        ntiles = int(
-                            max(max_duration // source_duration + 1, 1))
+                    ntiles = int(
+                        max(self.duration // source_duration + 1, 1))
 
                     # Create transformer
                     tfm = sox.Transformer()
