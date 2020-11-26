@@ -1601,7 +1601,6 @@ class Scaper(object):
                                        pitch_shift=pitch_shift,
                                        time_stretch=time_stretch)
         # Return
-        print(instantiated_event)
         return instantiated_event
 
     def _instantiate(self, allow_repeated_label=True,
