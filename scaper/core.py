@@ -1434,7 +1434,6 @@ class Scaper(object):
 
         # Make sure we can globally use this label
         if (not allow_global_repeated_source) and (label in self.global_used_labels):
-            print(f'labels{allowed_labels} ,used_labels {self.global_used_labels}')
             if (set(allowed_labels).issubset(set(self.global_used_labels)) or
                     label_tuple[0] == "const"):
                 raise ScaperError(
@@ -1477,13 +1476,16 @@ class Scaper(object):
         # Make sure sure we can globally use this source file
         if (not allow_global_repeated_source) and (source_file in self.global_used_source_files):
             source_files = _get_sorted_files(os.path.join(file_path, label))
-            if (len(source_files) == len(self.global_used_source_files) or
-                    source_file_tuple[0] == "const"):
+            if (len(set(source_files) - set(self.global_used_source_files)) ==0
+                    or source_file_tuple[0] == "const"):
                 raise ScaperError(
                     "Cannot instantiate event {:s}: all available source "
                     "files have globally already been used and "
                     "allow_repeated_source=False.".format(label))
             else:
+                source_file_tuple = list(source_file_tuple)
+                source_file_tuple[1] = list(set(source_files)-set(self.global_used_source_files))
+                source_file_tuple = tuple(source_file_tuple)
                 while source_file in self.global_used_source_files:
                     source_file = _get_value_from_dist(source_file_tuple, self.random_state)
 
@@ -1498,8 +1500,6 @@ class Scaper(object):
         # Update global used labels list
         if set(source_files).issubset(set(self.global_used_source_files)):
             self.global_used_labels.append(label)
-
-        print(source_file)
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
