@@ -1375,6 +1375,20 @@ def test_scaper_instantiate_event():
     assert instantiated_event.source_time == 0
     assert np.allclose(instantiated_event.event_duration, 0.806236, atol=1e-5)
 
+    # Protected labels override the soundscape duration if they are longer
+    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH,
+                       protected_labels='human_voice')
+    fg_event10 = fg_event._replace(
+        label=('const', 'human_voice'),
+        source_file=('const', 'tests/data/audio/foreground/human_voice/'
+                              '42-Human-Vocal-Voice-taxi-2_edit.wav'),
+        source_time=('const', 0.3),
+        event_duration=('const', 0.4))
+    instantiated_event = sc._instantiate_event(
+        fg_event10, disable_instantiation_warnings=True)
+    assert sc.duration == instantiated_event.event_duration
+    assert np.allclose(instantiated_event.event_duration, 0.806236, atol=1e-5)
+
     # repeated label when not allowed throws error
     sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH)
     pytest.raises(ScaperError, sc._instantiate_event, fg_event,
