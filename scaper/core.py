@@ -1488,6 +1488,9 @@ class Scaper(object):
                 source_file_tuple = tuple(source_file_tuple)
                 while source_file in self.global_used_source_files:
                     source_file = _get_value_from_dist(source_file_tuple, self.random_state)
+            # Update global used labels list
+            if set(source_files).issubset(set(self.global_used_source_files)):
+                self.global_used_labels.append(label)
 
         # Update the used source files list
         if source_file not in used_source_files:
@@ -1497,9 +1500,6 @@ class Scaper(object):
         if not allow_global_repeated_source:
             self.global_used_source_files.append(source_file)
 
-        # Update global used labels list
-        if set(source_files).issubset(set(self.global_used_source_files)):
-            self.global_used_labels.append(label)
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
