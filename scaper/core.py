@@ -1041,7 +1041,7 @@ class Scaper(object):
 
         # Copy list of protected labels
         self.protected_labels = protected_labels[:]
-        self.forced_protected_labels = protected_labels[:]
+        self.forced_protected_labels = []
 
         # Get random number generator
         self.random_state = _check_random_state(random_state)
