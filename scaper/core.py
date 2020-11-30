@@ -1488,9 +1488,6 @@ class Scaper(object):
                 source_file_tuple = tuple(source_file_tuple)
                 while source_file in self.global_used_source_files:
                     source_file = _get_value_from_dist(source_file_tuple, self.random_state)
-            # Update global used labels list
-            if set(source_files).issubset(set(self.global_used_source_files)):
-                self.global_used_labels.append(label)
 
         # Update the used source files list
         if source_file not in used_source_files:
@@ -1499,7 +1496,10 @@ class Scaper(object):
         # Update the global used source files list
         if not allow_global_repeated_source:
             self.global_used_source_files.append(source_file)
-
+            source_files = _get_sorted_files(os.path.join(file_path, label))
+            # Update global used labels list
+            if set(source_files).issubset(set(self.global_used_source_files)):
+                self.global_used_labels.append(label)
 
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
@@ -2244,6 +2244,10 @@ class Scaper(object):
             When True (default) the same source file can be used more than once
             in a soundscape instantiation. When False every source file can
             only be used once.
+        allow_repeated_source : bool
+            When True (default) the same source file can be used more than once
+            in all soundscape instantiation. When False every source file can
+            only be used in one soundscape.
         reverb : float or None
             Amount of reverb to apply to the generated soundscape between 0
             (no reverberation) and 1 (maximum reverberation). Use None
@@ -2339,6 +2343,9 @@ class Scaper(object):
         Scaper._instantiate
 
         Scaper._generate_audio
+
+        Args:
+            allow_global_repeated_source:
 
         """
         # Check parameter validity
