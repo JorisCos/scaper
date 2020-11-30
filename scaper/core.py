@@ -1041,6 +1041,7 @@ class Scaper(object):
 
         # Copy list of protected labels
         self.protected_labels = protected_labels[:]
+        self.forced_protected_labels = protected_labels[:]
 
         # Get random number generator
         self.random_state = _check_random_state(random_state)
@@ -1426,6 +1427,8 @@ class Scaper(object):
 
         elif label in self.protected_labels:
             event_duration = source_duration
+        elif label in self.forced_protected_labels:
+            event_duration = source_duration
             if self.duration < source_duration:
                 self.duration = source_duration
         else:
@@ -1652,6 +1655,27 @@ class Scaper(object):
         # INSTANTIATE BACKGROUND AND FOREGROUND EVENTS AND ADD TO ANNOTATION
         # NOTE: logic for instantiating bg and fg events is NOT the same.
 
+        # Add background sounds
+        bg_labels = []
+        bg_source_files = []
+        for event in self.bg_spec:
+            value = self._instantiate_event(
+                event,
+                isbackground=True,
+                allow_repeated_label=allow_repeated_label,
+                allow_repeated_source=allow_repeated_source,
+                used_labels=bg_labels,
+                used_source_files=bg_source_files,
+                disable_instantiation_warnings=disable_instantiation_warnings)
+
+            # Note: add_background doesn't allow to set a time_stretch, i.e.
+            # it's hardcoded to time_stretch=None, so we don't need to check
+            # if value.time_stretch is not None, since it always will be.
+            ann.append(time=value.event_time,
+                       duration=value.event_duration,
+                       value=value._asdict(),
+                       confidence=1.0)
+
         # Add foreground events
         fg_labels = []
         fg_source_files = []
@@ -1675,27 +1699,6 @@ class Scaper(object):
                        duration=event_duration_stretched,
                        value=value._asdict(),
                        confidence=1.0)
-
-            # Add background sounds
-            bg_labels = []
-            bg_source_files = []
-            for event in self.bg_spec:
-                value = self._instantiate_event(
-                    event,
-                    isbackground=True,
-                    allow_repeated_label=allow_repeated_label,
-                    allow_repeated_source=allow_repeated_source,
-                    used_labels=bg_labels,
-                    used_source_files=bg_source_files,
-                    disable_instantiation_warnings=disable_instantiation_warnings)
-
-                # Note: add_background doesn't allow to set a time_stretch, i.e.
-                # it's hardcoded to time_stretch=None, so we don't need to check
-                # if value.time_stretch is not None, since it always will be.
-                ann.append(time=value.event_time,
-                           duration=value.event_duration,
-                           value=value._asdict(),
-                           confidence=1.0)
 
         # Compute max polyphony
         poly = max_polyphony(ann)

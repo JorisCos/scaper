@@ -1312,8 +1312,8 @@ def test_override_duration():
                          pitch_shift=('normal', 0, 1),
                          time_stretch=('uniform', 0.8, 1.2))
     # Protected labels override the soundscape duration if they are longer
-    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH,
-                       protected_labels=['human_voice'])
+    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH)
+    sc.forced_protected_labels = ['human_voice']
     fg_event10 = fg_event._replace(
         label=('const', 'human_voice'),
         source_file=('const', 'tests/data/audio/foreground/human_voice/'
@@ -1323,6 +1323,13 @@ def test_override_duration():
     instantiated_event = sc._instantiate_event(
         fg_event10, disable_instantiation_warnings=True)
     assert np.allclose(instantiated_event.event_duration, 0.806236, atol=1e-5)
+
+
+def test_reset_duration():
+    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH)
+    sc.duration = 0.7
+    sc.reset_duration()
+    assert  sc.duration == 0.5
 
 
 def test_scaper_instantiate_event():
