@@ -205,6 +205,7 @@ def generate_from_jams(jams_infile,
     # Set synthesis parameters
     if 'sr' in ann.sandbox.scaper: # backwards compatibility
         sc.sr = ann.sandbox.scaper['sr']
+    # sc.forced_protected_labels = ann.sandbox.scaper['forced_protected_labels']
     sc.ref_db = ann.sandbox.scaper['ref_db']
     sc.n_channels = ann.sandbox.scaper['n_channels']
     sc.fade_in_len = ann.sandbox.scaper['fade_in_len']
@@ -1039,9 +1040,12 @@ class Scaper(object):
         _populate_label_list(self.fg_path, self.fg_labels)
         _populate_label_list(self.bg_path, self.bg_labels)
 
-        # Copy list of protected labels
-        self.protected_labels = protected_labels[:]
+        # forced protected labels behave as protected label but they override
+        # the soundscape if they are longer.
         self.forced_protected_labels = []
+
+        # Copy list of protected labels
+        self.protected_labels = protected_labels[:] + self.forced_protected_labels
 
         # Get random number generator
         self.random_state = _check_random_state(random_state)
@@ -1075,6 +1079,17 @@ class Scaper(object):
         self.bg_spec = []
 
     def reset_duration(self):
+        '''
+       Resets the duration soundscape specification to as it is when
+       the Scaper object is initialized in the first place. This allows the same
+       Scaper object to be used over and over again to generate new soundscapes
+       with the same underlying settings (e.g. `ref_db`, `num_channels`, and so on.)
+
+       See Also
+       --------
+       Scaper.reset_bg_event_spec : Same functionality but resets the background
+       event specification instead of the foreground specification.
+        '''
         self.duration = self.ini_duration
 
     def set_random_state(self, random_state):
@@ -1427,6 +1442,9 @@ class Scaper(object):
 
         elif label in self.protected_labels:
             event_duration = source_duration
+        # If the foreground event's label is in the forced_protected list,
+        # use the source file's duration without modification and change the
+        # soundscape duration to match the longest foreground
         elif label in self.forced_protected_labels:
             event_duration = source_duration
             if self.duration < source_duration:
@@ -1720,6 +1738,7 @@ class Scaper(object):
             fg_labels=self.fg_labels,
             bg_labels=self.bg_labels,
             protected_labels=self.protected_labels,
+            # forced_protected_labels=self.forced_protected_labels,
             sr=self.sr,
             ref_db=self.ref_db,
             n_channels=self.n_channels,
