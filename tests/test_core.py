@@ -1311,7 +1311,7 @@ def test_override_duration():
                          role='foreground',
                          pitch_shift=('normal', 0, 1),
                          time_stretch=('uniform', 0.8, 1.2))
-    # Protected labels override the soundscape duration if they are longer
+    # forced_protected_labels override the soundscape duration if they are longer
     sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH)
     sc.forced_protected_labels = ['human_voice']
     fg_event10 = fg_event._replace(
