@@ -1041,7 +1041,7 @@ class Scaper(object):
         _populate_label_list(self.fg_path, self.fg_labels)
         _populate_label_list(self.bg_path, self.bg_labels)
 
-        # forced _protected_labels behave as protected_labels but they override
+        # forced_protected_labels behave as protected_labels but they override
         # the soundscape if they are longer.
         if forced_protected_labels is None:
             self.forced_protected_labels = []
