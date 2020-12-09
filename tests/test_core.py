@@ -1245,7 +1245,7 @@ def test_reset_all():
     assert not sc.global_used_source_files
     assert not sc.fg_spec
     assert not sc.bg_spec
-    assert sc.duration = 10.0
+    assert sc.duration == 10.0
 
 
 def test_reset_fg_bg_event_spec():

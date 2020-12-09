@@ -1368,6 +1368,7 @@ class Scaper(object):
     def _instantiate_event(self, event, isbackground=False,
                            allow_repeated_label=True,
                            allow_repeated_source=True,
+                           allow_global_repeated_source=True,
                            used_labels=[],
                            used_source_files=[],
                            disable_instantiation_warnings=False):
@@ -1724,7 +1725,9 @@ class Scaper(object):
         return instantiated_event
 
     def _instantiate(self, allow_repeated_label=True,
-                     allow_repeated_source=True, reverb=None,
+                     allow_repeated_source=True,
+                     allow_global_repeated_source=True,
+                     reverb=None,
                      disable_instantiation_warnings=False):
         '''
         Instantiate a specific soundscape in JAMS format based on the current
@@ -2283,6 +2286,10 @@ class Scaper(object):
             When True (default) the same source file can be used more than once
             in all soundscape instantiation. When False every source file can
             only be used in one soundscape.
+        allow_repeated_source : bool
+            When True (default) the same source file can be used more than once
+            in all soundscape instantiation. When False every source file can
+            only be used in all soundscape.
         reverb : float or None
             Amount of reverb to apply to the generated soundscape between 0
             (no reverberation) and 1 (maximum reverberation). Use None
