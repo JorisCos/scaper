@@ -1,4 +1,3 @@
-
 import scaper
 from scaper.scaper_exceptions import ScaperError
 from scaper.scaper_warnings import ScaperWarning
@@ -17,7 +16,6 @@ from copy import deepcopy
 import shutil
 from contextlib import contextmanager
 import csv
-
 
 # FIXTURES
 # Paths to files for testing
@@ -59,7 +57,8 @@ TEST_PATHS = {
 }
 
 
-def _compare_scaper_jams(jam, regjam, exclude_additional_scaper_sandbox_keys=[]):
+def _compare_scaper_jams(jam, regjam,
+                         exclude_additional_scaper_sandbox_keys=[]):
     """
     Check whether two scaper jams objects are equal up to floating point
     precision, ignoring jams_version and scaper_version.
@@ -111,17 +110,20 @@ def _compare_scaper_jams(jam, regjam, exclude_additional_scaper_sandbox_keys=[])
 
     excluded_scaper_sandbox_keys = [
         'bg_spec', 'fg_spec', 'scaper_version', 'soundscape_audio_path',
-        'isolated_events_audio_path',
+        'isolated_events_audio_path', 'allow_global_repeated_source'
+
     ]
     excluded_scaper_sandbox_keys.extend(exclude_additional_scaper_sandbox_keys)
 
     # everything but the specs and version can be compared directly:
-    for k in set(ann.sandbox.scaper.keys()) | set(regann.sandbox.scaper.keys()):
+    for k in set(ann.sandbox.scaper.keys()) | set(
+            regann.sandbox.scaper.keys()):
         if k not in excluded_scaper_sandbox_keys:
             assert ann.sandbox.scaper[k] == regann.sandbox.scaper[k], (
                 'Unequal values for "{}"'.format(k))
 
     # to compare specs need to covert raw specs to list of lists
+
     bg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e in
                     ann.sandbox.scaper['bg_spec']]
     fg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e in
@@ -152,7 +154,6 @@ def _compare_scaper_jams(jam, regjam, exclude_additional_scaper_sandbox_keys=[])
 
 
 def _compare_txt_annotation(orig_txt_file, gen_txt_file):
-
     # if string - read in both files.
     # if list, assume data already loaded
     if type(orig_txt_file) is str:
@@ -167,7 +168,7 @@ def _compare_txt_annotation(orig_txt_file, gen_txt_file):
     # compare start and end times
     for txt_row, gen_txt_row in zip(txt_data, gen_txt_data):
         assert np.allclose(txt_row[:2], gen_txt_row[:2])  # compare times
-        assert txt_row[2] == gen_txt_row[2]               # compare labels
+        assert txt_row[2] == gen_txt_row[2]  # compare labels
 
 
 def _load_txt_annotation(txt_file, delimiter='\t'):
@@ -197,7 +198,6 @@ def _load_txt_annotation(txt_file, delimiter='\t'):
 
 
 def test_generate_from_jams(atol=1e-5, rtol=1e-8):
-
     # Test for invalid jams: no annotations
     tmpfiles = []
     with _close_temp_files(tmpfiles):
@@ -216,23 +216,27 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
     old_jam_file = 'tests/data/regression/soundscape_20200501_44100_no_clipping_normalization_fields.jams'
     tmpfiles = []
     with _close_temp_files(tmpfiles):
-        gen_audio_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+        gen_audio_file = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                     delete=True)
         gen_jam_file = tempfile.NamedTemporaryFile(suffix='.jams', delete=True)
         gen_txt_file = tempfile.NamedTemporaryFile(suffix='.txt', delete=True)
         tmpfiles.extend([gen_audio_file, gen_jam_file, gen_txt_file])
 
-        (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) =  \
+        (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+         fj_event_audio_list) = \
             scaper.generate_from_jams(old_jam_file,
                                       audio_outfile=gen_audio_file.name,
                                       jams_outfile=gen_jam_file.name,
                                       txt_path=gen_txt_file.name)
 
         # validate return API
-        orig_wav, sr = soundfile.read(TEST_PATHS[44100]['REG'].wav, always_2d=True)
+        orig_wav, sr = soundfile.read(TEST_PATHS[44100]['REG'].wav,
+                                      always_2d=True)
         assert np.allclose(orig_wav, fj_soundscape_audio)
 
         regjam = jams.load(TEST_PATHS[44100]['REG'].jams)
-        sandbox_exclude = ['fix_clipping', 'peak_normalization', 'quick_pitch_time']
+        sandbox_exclude = ['fix_clipping', 'peak_normalization',
+                           'quick_pitch_time']
         _compare_scaper_jams(
             regjam, fj_soundscape_jam,
             exclude_additional_scaper_sandbox_keys=sandbox_exclude)
@@ -247,14 +251,16 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         assert np.allclose(gen_wav, orig_wav, atol=atol, rtol=rtol)
 
         # validate jams
-        sandbox_exclude = ['fix_clipping', 'peak_normalization', 'quick_pitch_time']
+        sandbox_exclude = ['fix_clipping', 'peak_normalization',
+                           'quick_pitch_time']
         gen_jam = jams.load(gen_jam_file.name)
         _compare_scaper_jams(
             regjam, gen_jam,
             exclude_additional_scaper_sandbox_keys=sandbox_exclude)
 
         # validate annotation txt
-        _compare_txt_annotation(TEST_PATHS[44100]['REG'].txt, gen_txt_file.name)
+        _compare_txt_annotation(TEST_PATHS[44100]['REG'].txt,
+                                gen_txt_file.name)
 
     # Test for valid jams file
     tmpfiles = []
@@ -262,7 +268,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
 
         # Create all necessary temp files
         orig_wav_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
-        orig_jam_file = tempfile.NamedTemporaryFile(suffix='.jams', delete=True)
+        orig_jam_file = tempfile.NamedTemporaryFile(suffix='.jams',
+                                                    delete=True)
         orig_txt_file = tempfile.NamedTemporaryFile(suffix='.txt', delete=True)
 
         gen_wav_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
@@ -299,8 +306,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         sc_clipping.protected_labels = []
         sc_clipping.ref_db = 0
         sc_clipping.add_background(label=('choose', []),
-                          source_file=('choose', []),
-                          source_time=('const', 0))
+                                   source_file=('choose', []),
+                                   source_time=('const', 0))
         # Add 5 events
         for _ in range(5):
             sc_clipping.add_event(label=('choose', []),
@@ -336,13 +343,15 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # generate, then generate from the jams and compare audio files
         # repeat 5 times
         for _ in range(5):
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc.generate(audio_path=orig_wav_file.name,
                             jams_path=orig_jam_file.name,
                             txt_path=orig_txt_file.name,
                             disable_instantiation_warnings=True)
 
-            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) = \
+            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+             fj_event_audio_list) = \
                 scaper.generate_from_jams(orig_jam_file.name,
                                           audio_outfile=gen_wav_file.name,
                                           jams_outfile=gen_jam_file.name,
@@ -371,8 +380,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Test when we generate ONLY a JAMS file, and then generate audio from the JAMS
         # Case 1: without clipping
         for _ in range(5):
-
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc.generate(audio_path=orig_wav_file.name,
                             jams_path=orig_jam_file.name,
                             txt_path=orig_txt_file.name,
@@ -403,7 +412,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
             assert ann.sandbox.scaper.ref_db_generated == \
                    ann.sandbox.scaper.ref_db
 
-            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) = \
+            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+             fj_event_audio_list) = \
                 scaper.generate_from_jams(orig_jam_file.name,
                                           audio_outfile=gen_wav_file.name,
                                           jams_outfile=gen_jam_file.name,
@@ -416,7 +426,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Test when we generate ONLY a JAMS file, and then generate audio from the JAMS
         # Case 2: WITH CLIPPING
         for _ in range(5):
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc_clipping.generate(audio_path=orig_wav_file.name,
                                      jams_path=orig_jam_file.name,
                                      txt_path=orig_txt_file.name,
@@ -448,7 +459,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
             assert ann.sandbox.scaper.ref_db_generated == \
                    ann.sandbox.scaper.ref_db
 
-            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) = \
+            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+             fj_event_audio_list) = \
                 scaper.generate_from_jams(orig_jam_file.name,
                                           audio_outfile=gen_wav_file.name,
                                           jams_outfile=gen_jam_file.name,
@@ -481,7 +493,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Test when we generate ONLY a JAMS file, and then generate audio from the JAMS
         # Case 3: WITH quick_pitch_time=True, no clipping
         for _ in range(5):
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc.generate(audio_path=orig_wav_file.name,
                             jams_path=orig_jam_file.name,
                             txt_path=orig_txt_file.name,
@@ -514,7 +527,8 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
             assert ann.sandbox.scaper.ref_db_generated == \
                    ann.sandbox.scaper.ref_db
 
-            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) = \
+            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+             fj_event_audio_list) = \
                 scaper.generate_from_jams(orig_jam_file.name,
                                           audio_outfile=gen_wav_file.name,
                                           jams_outfile=gen_jam_file.name,
@@ -551,8 +565,10 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Now add in trimming!
         for _ in range(5):
             with backports.tempfile.TemporaryDirectory() as isolated_events_path:
-                orig_events_path = os.path.join(isolated_events_path, 'original')
-                gen_events_path = os.path.join(isolated_events_path, 'generated')
+                orig_events_path = os.path.join(isolated_events_path,
+                                                'original')
+                gen_events_path = os.path.join(isolated_events_path,
+                                               'generated')
                 os.makedirs(orig_events_path)
                 os.makedirs(gen_events_path)
 
@@ -573,8 +589,10 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
                                           save_isolated_events=True,
                                           isolated_events_path=gen_events_path)
 
-                _validate_soundscape_and_event_audio(orig_wav_file, gen_wav_file,
-                    gen_events_path, orig_events_path)
+                _validate_soundscape_and_event_audio(orig_wav_file,
+                                                     gen_wav_file,
+                                                     gen_events_path,
+                                                     orig_events_path)
 
                 # TODO
                 # _compare_txt_annotation(orig_txt_file.name, gen_txt_file.name)
@@ -582,8 +600,10 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Double trimming
         for _ in range(2):
             with backports.tempfile.TemporaryDirectory() as isolated_events_path:
-                orig_events_path = os.path.join(isolated_events_path, 'original')
-                gen_events_path = os.path.join(isolated_events_path, 'generated')
+                orig_events_path = os.path.join(isolated_events_path,
+                                                'original')
+                gen_events_path = os.path.join(isolated_events_path,
+                                               'generated')
                 os.makedirs(orig_events_path)
                 os.makedirs(gen_events_path)
 
@@ -601,12 +621,15 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
                             orig_wav_file.name, orig_jam_file.name,
                             np.random.uniform(0, 2), np.random.uniform(4, 6))
 
-                scaper.generate_from_jams(orig_jam_file.name, gen_wav_file.name,
+                scaper.generate_from_jams(orig_jam_file.name,
+                                          gen_wav_file.name,
                                           save_isolated_events=True,
                                           isolated_events_path=gen_events_path)
 
-                _validate_soundscape_and_event_audio(orig_wav_file, gen_wav_file,
-                    gen_events_path, orig_events_path)
+                _validate_soundscape_and_event_audio(orig_wav_file,
+                                                     gen_wav_file,
+                                                     gen_events_path,
+                                                     orig_events_path)
 
                 # TODO
                 # _compare_txt_annotation(orig_txt_file.name, gen_txt_file.name)
@@ -614,8 +637,10 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
         # Triple trimming
         for _ in range(2):
             with backports.tempfile.TemporaryDirectory() as isolated_events_path:
-                orig_events_path = os.path.join(isolated_events_path, 'original')
-                gen_events_path = os.path.join(isolated_events_path, 'generated')
+                orig_events_path = os.path.join(isolated_events_path,
+                                                'original')
+                gen_events_path = os.path.join(isolated_events_path,
+                                               'generated')
                 os.makedirs(orig_events_path)
                 os.makedirs(gen_events_path)
 
@@ -636,30 +661,35 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
                             orig_wav_file.name, orig_jam_file.name,
                             np.random.uniform(0, 1), np.random.uniform(3, 4))
 
-                scaper.generate_from_jams(orig_jam_file.name, gen_wav_file.name,
+                scaper.generate_from_jams(orig_jam_file.name,
+                                          gen_wav_file.name,
                                           save_isolated_events=True,
                                           isolated_events_path=gen_events_path)
 
-                _validate_soundscape_and_event_audio(orig_wav_file, gen_wav_file,
-                    gen_events_path, orig_events_path)
+                _validate_soundscape_and_event_audio(orig_wav_file,
+                                                     gen_wav_file,
+                                                     gen_events_path,
+                                                     orig_events_path)
 
                 # TODO
                 # _compare_txt_annotation(orig_txt_file.name, gen_txt_file.name)
 
         # Test with new FG and BG paths
         for _ in range(5):
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc.generate(audio_path=orig_wav_file.name,
-                        jams_path=orig_jam_file.name,
-                        txt_path=orig_txt_file.name,
-                        disable_instantiation_warnings=True)
+                            jams_path=orig_jam_file.name,
+                            txt_path=orig_txt_file.name,
+                            disable_instantiation_warnings=True)
 
-            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list, fj_event_audio_list) = \
+            (fj_soundscape_audio, fj_soundscape_jam, fj_annotation_list,
+             fj_event_audio_list) = \
                 scaper.generate_from_jams(orig_jam_file.name,
-                                      audio_outfile=gen_wav_file.name,
-                                      txt_path=gen_txt_file.name,
-                                      fg_path=ALT_FG_PATH,
-                                      bg_path=ALT_BG_PATH)
+                                          audio_outfile=gen_wav_file.name,
+                                          txt_path=gen_txt_file.name,
+                                          fg_path=ALT_FG_PATH,
+                                          bg_path=ALT_BG_PATH)
 
             # validate return API
             assert np.allclose(soundscape_audio, fj_soundscape_audio)
@@ -699,7 +729,6 @@ def test_generate_from_jams(atol=1e-5, rtol=1e-8):
 
 
 def test_trim(atol=1e-5, rtol=1e-8):
-
     # Things we want to test:
     # 1. Jam trimmed correctly (mainly handled by jams.slice)
     # 2. value dict updated correctly (event_time, event_duration, source_time)
@@ -711,10 +740,12 @@ def test_trim(atol=1e-5, rtol=1e-8):
 
         # Create all necessary temp files
         orig_wav_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
-        orig_jam_file = tempfile.NamedTemporaryFile(suffix='.jams', delete=True)
+        orig_jam_file = tempfile.NamedTemporaryFile(suffix='.jams',
+                                                    delete=True)
 
         trim_wav_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
-        trim_jam_file = tempfile.NamedTemporaryFile(suffix='.jams', delete=True)
+        trim_jam_file = tempfile.NamedTemporaryFile(suffix='.jams',
+                                                    delete=True)
 
         trimstrict_wav_file = tempfile.NamedTemporaryFile(
             suffix='.wav', delete=True)
@@ -790,7 +821,8 @@ def test_trim(atol=1e-5, rtol=1e-8):
         # validate audio
         orig_wav, sr = soundfile.read(orig_wav_file.name)
         trim_wav, sr = soundfile.read(trim_wav_file.name)
-        assert np.allclose(trim_wav, orig_wav[3*sr:7*sr], atol=atol, rtol=rtol)
+        assert np.allclose(trim_wav, orig_wav[3 * sr:7 * sr], atol=atol,
+                           rtol=rtol)
 
 
 def test_get_value_from_dist():
@@ -828,7 +860,8 @@ def test_get_value_from_dist():
                 print(t, len(t))
             else:
                 print(t)
-            pytest.raises(ScaperError, scaper.core._get_value_from_dist, t, random_state=rng)
+            pytest.raises(ScaperError, scaper.core._get_value_from_dist, t,
+                          random_state=rng)
 
     # not tuple = error
     nontuples = [[], 5, 'yes']
@@ -917,7 +950,6 @@ def test_ensure_satisfiable_source_time_tuple():
 
 
 def test_validate_distribution():
-
     def __test_bad_tuple_list(tuple_list):
         for t in tuple_list:
             if isinstance(t, tuple):
@@ -958,7 +990,6 @@ def test_validate_distribution():
 
 
 def test_validate_label():
-
     # label must be in list of allowed labels
     allowed_labels = ['yes']
     pytest.raises(ScaperError, scaper.core._validate_label, ('const', 'no'),
@@ -978,7 +1009,6 @@ def test_validate_label():
 
 
 def test_validate_source_file():
-
     # file must exist
     # create temp folder so we have path to file we know doesn't exist
     with backports.tempfile.TemporaryDirectory() as tmpdir:
@@ -1011,7 +1041,6 @@ def test_validate_source_file():
 
 
 def test_validate_time():
-
     def __test_bad_time_tuple(time_tuple):
         pytest.raises(ScaperError, scaper.core._validate_time, time_tuple)
 
@@ -1036,9 +1065,7 @@ def test_validate_time():
     # truncnorm can't have negative min value
     __test_bad_time_tuple(('truncnorm', 0, 1, -1, 1))
 
-
 def test_validate_duration():
-
     def __test_bad_duration_tuple(duration_tuple):
         pytest.raises(ScaperError, scaper.core._validate_duration,
                       duration_tuple)
@@ -1069,7 +1096,6 @@ def test_validate_duration():
 
 
 def test_validate_snr():
-
     def __test_bad_snr_tuple(snr_tuple):
         pytest.raises(ScaperError, scaper.core._validate_snr, snr_tuple)
 
@@ -1087,7 +1113,6 @@ def test_validate_snr():
 
 
 def test_validate_pitch_shift():
-
     def __test_bad_ps_tuple(ps_tuple):
         pytest.raises(ScaperError, scaper.core._validate_pitch_shift, ps_tuple)
 
@@ -1105,7 +1130,6 @@ def test_validate_pitch_shift():
 
 
 def test_validate_time_stretch():
-
     def __test_bad_ts_tuple(ts_tuple):
         pytest.raises(ScaperError, scaper.core._validate_time_stretch,
                       ts_tuple)
@@ -1134,7 +1158,6 @@ def test_validate_time_stretch():
 
 
 def test_validate_event():
-
     bad_allowed_labels = [0, 'yes', 1j, np.array([1, 2, 3])]
 
     for bal in bad_allowed_labels:
@@ -1186,9 +1209,28 @@ def test_scaper_init():
     assert sc.fade_out_len == 0.01  # 10 ms
 
 
-def test_reset_fg_bg_event_spec():
-    def _add_fg_event(sc):
-        sc.add_event(label=('const', 'siren'),
+def test_reset_global_used():
+    sc = scaper.Scaper(
+        10.0, fg_path=FG_PATH, bg_path=BG_PATH, random_state=0)
+    sc.global_used_source_files = ['yes']
+    sc.reset_global_used()
+    assert not sc.global_used_source_files
+
+
+def test_reset_global_used_labels():
+    sc = scaper.Scaper(
+        10.0, fg_path=FG_PATH, bg_path=BG_PATH, random_state=0)
+    sc.global_used_labels = ['yes']
+    sc.reset_global_used_labels()
+    assert not sc.global_used_labels
+
+
+def test_reset_all():
+    sc = scaper.Scaper(
+        10.0, fg_path=FG_PATH, bg_path=BG_PATH, random_state=0)
+    sc.global_used_source_files = ['yes']
+    sc.global_used_labels = ['yes']
+    sc.add_event(label=('const', 'siren'),
                  source_file=('choose', []),
                  source_time=('const', 0),
                  event_time=('uniform', 0, 9),
@@ -1196,6 +1238,26 @@ def test_reset_fg_bg_event_spec():
                  snr=('uniform', 10, 20),
                  pitch_shift=('normal', 0, 1),
                  time_stretch=('uniform', 0.8, 1.2))
+
+    sc.add_background(("const", "park"), ("choose", []), ("const", 0))
+    sc.reset_all()
+    assert not sc.global_used_labels
+    assert not sc.global_used_source_files
+    assert not sc.fg_spec
+    assert not sc.bg_spec
+    assert sc.duration = 10.0
+
+
+def test_reset_fg_bg_event_spec():
+    def _add_fg_event(sc):
+        sc.add_event(label=('const', 'siren'),
+                     source_file=('choose', []),
+                     source_time=('const', 0),
+                     event_time=('uniform', 0, 9),
+                     event_duration=('truncnorm', 2, 1, 1, 3),
+                     snr=('uniform', 10, 20),
+                     pitch_shift=('normal', 0, 1),
+                     time_stretch=('uniform', 0.8, 1.2))
 
     def _add_bg_event(sc):
         sc.add_background(("const", "park"), ("choose", []), ("const", 0))
@@ -1272,7 +1334,6 @@ def test_scaper_add_background():
 
 
 def test_scaper_add_event():
-
     sc = scaper.Scaper(10.0, FG_PATH, BG_PATH)
 
     # Initially fg_spec should be empty
@@ -1334,7 +1395,6 @@ def test_reset_duration():
 
 
 def test_scaper_instantiate_event():
-
     # GF EVENT TO WORK WITH
     fg_event = EventSpec(label=('const', 'siren'),
                          source_file=('choose', []),
@@ -1350,7 +1410,8 @@ def test_scaper_instantiate_event():
     sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH)
     instantiated_event = sc._instantiate_event(
         fg_event, isbackground=False, allow_repeated_label=True,
-        allow_repeated_source=True, used_labels=[], used_source_files=[],
+        allow_repeated_source=True, allow_global_repeated_source=True,
+        used_labels=[], used_source_files=[],
         disable_instantiation_warnings=True)
     assert instantiated_event.label == 'siren'
     assert instantiated_event.source_file == (
@@ -1363,6 +1424,7 @@ def test_scaper_instantiate_event():
     assert scaper.util.is_real_number(instantiated_event.pitch_shift)
     assert 0.8 <= instantiated_event.time_stretch <= 1.2
 
+
     # when a label needs to be replaced because it's used already
     fg_event8 = fg_event._replace(label=('choose', []))
     # repeat several times to increase chance of hitting the line we need to
@@ -1370,7 +1432,8 @@ def test_scaper_instantiate_event():
     for _ in range(20):
         instantiated_event = sc._instantiate_event(
             fg_event8, isbackground=False, allow_repeated_label=False,
-            allow_repeated_source=True, used_labels=['siren', 'human_voice'],
+            allow_repeated_source=True, allow_global_repeated_source=True,
+            used_labels=['siren', 'human_voice'],
             disable_instantiation_warnings=True)
         assert instantiated_event.label == 'car_horn'
 
@@ -1382,6 +1445,7 @@ def test_scaper_instantiate_event():
         instantiated_event = sc._instantiate_event(
             fg_event9, isbackground=False, allow_repeated_label=True,
             allow_repeated_source=False,
+            allow_global_repeated_source=True,
             used_labels=[],
             used_source_files=(
                 ['tests/data/audio/foreground/human_voice/'
@@ -1392,6 +1456,59 @@ def test_scaper_instantiate_event():
         assert instantiated_event.source_file == (
             'tests/data/audio/foreground/human_voice/'
             '42-Human-Vocal-Voice-taxi-2_edit.wav')
+
+    sc.reset_all()
+    # when a label needs to be replaced because it's globally used already
+    fg_event8_bis = fg_event._replace(label=('choose', []))
+    # repeat several times to increase chance of hitting the line we need to
+    # test
+    sc.global_used_labels = ['siren', 'human_voice']
+    for _ in range(2):
+        instantiated_event = sc._instantiate_event(
+            fg_event8_bis, isbackground=False, allow_repeated_label=False,
+            allow_repeated_source=True, allow_global_repeated_source=False,
+            used_labels=[],
+            disable_instantiation_warnings=True)
+        assert instantiated_event.label == 'car_horn'
+    assert 'car_horn' in sc.global_used_labels
+
+    sc.global_used_labels = ['siren', 'human_voice']
+    # Check error if all sources have been used
+    pytest.raises(ScaperError,sc._instantiate_event,fg_event8_bis,
+                  isbackground=False, allow_repeated_label=False,
+                  allow_repeated_source=True, allow_global_repeated_source=False,
+                  used_labels=[],disable_instantiation_warnings=True)
+
+    sc.global_used_labels = ['siren', 'human_voice','car_horn']
+    pytest.raises(ScaperError,sc._instantiate_event,fg_event8_bis,
+                  isbackground=False, allow_repeated_label=False,
+                  allow_repeated_source=True, allow_global_repeated_source=False,
+                  used_labels=[],disable_instantiation_warnings=True)
+
+    sc.global_used_labels = []
+    sc.reset_all()
+
+    # when a source file needs to be replaced because it's globally used already
+    fg_event9_bis = fg_event._replace(label=('const', 'human_voice'))
+    # repeat several times to increase chance of hitting the line we need to
+    # test
+    sc.global_used_source_files = ['tests/data/audio/foreground/human_voice/'
+                                   '42-Human-Vocal-Voice-all-aboard_edit.wav',
+                                   'tests/data/audio/foreground/human_voice/'
+                                   '42-Human-Vocal-Voice-taxi-1_edit.wav']
+
+    instantiated_event = sc._instantiate_event(
+        fg_event9_bis, isbackground=False, allow_repeated_label=True,
+        allow_repeated_source=False,
+        allow_global_repeated_source=False,
+        used_labels=[],
+        used_source_files=[],
+        disable_instantiation_warnings=True)
+    assert instantiated_event.source_file == (
+        'tests/data/audio/foreground/human_voice/'
+        '42-Human-Vocal-Voice-taxi-2_edit.wav')
+    assert 'tests/data/audio/foreground/human_voice/42-Human-Vocal-Voice-taxi-2_edit.wav' in sc.global_used_source_files
+    sc.global_used_source_files = []
 
     # Protected labels must have original source duration and source time 0
     sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH,
@@ -1413,6 +1530,7 @@ def test_scaper_instantiate_event():
                   isbackground=False,
                   allow_repeated_label=False,
                   allow_repeated_source=True,
+                  allow_global_repeated_source=True,
                   used_labels=['siren'])
 
     # repeated source when not allowed throws error
@@ -1420,6 +1538,7 @@ def test_scaper_instantiate_event():
                   isbackground=False,
                   allow_repeated_label=True,
                   allow_repeated_source=False,
+                  allow_global_repeated_source=True,
                   used_labels=['siren'],
                   used_source_files=(
                       ['tests/data/audio/foreground/siren/69-Siren-1.wav']))
@@ -1443,39 +1562,39 @@ def test_scaper_instantiate_event():
 
     # 'const' source_time + event_duration > source_duration: warning
     fg_event5a = fg_event._replace(event_time=('const', 0),
-                                  event_duration=('const', 8),
-                                  source_time=('const', 20))
+                                   event_duration=('const', 8),
+                                   source_time=('const', 20))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5a)
 
     # 'choose' source_time + event_duration > source_duration: warning
     fg_event5b = fg_event._replace(event_time=('const', 0),
-                                  event_duration=('const', 8),
-                                  source_time=('choose', [20, 20]))
+                                   event_duration=('const', 8),
+                                   source_time=('choose', [20, 20]))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5b)
 
     # 'uniform' source_time + event_duration > source_duration: warning
     fg_event5c = fg_event._replace(event_time=('const', 0),
-                                  event_duration=('const', 8),
-                                  source_time=('uniform', 20, 25))
+                                   event_duration=('const', 8),
+                                   source_time=('uniform', 20, 25))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5c)
 
     # 'normal' source_time + event_duration > source_duration: warning
     fg_event5d = fg_event._replace(event_time=('const', 0),
-                                  event_duration=('const', 8),
-                                  source_time=('normal', 20, 2))
+                                   event_duration=('const', 8),
+                                   source_time=('normal', 20, 2))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5d)
 
     # 'truncnorm' source_time + event_duration > source_duration: warning
     fg_event5e = fg_event._replace(event_time=('const', 0),
-                                  event_duration=('const', 8),
-                                  source_time=('truncnorm', 20, 2, 20, 20))
+                                   event_duration=('const', 8),
+                                   source_time=('truncnorm', 20, 2, 20, 20))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5e)
 
     # 'normal' random draw above mean with mean = source_duration - event_duration
     # source_time + event_duration > source_duration: warning
     fg_event5f = fg_event._replace(event_time=('const', 0),
-                            event_duration=('const', 8),
-                            source_time=('normal', 18.25, 2))
+                                   event_duration=('const', 8),
+                                   source_time=('normal', 18.25, 2))
 
     def _repeat_instantiation(event):
         # keep going till we hit a draw that covers when the draw exceeds
@@ -1661,8 +1780,9 @@ def _compare_generators(generators, atol=1e-4, rtol=1e-8):
         tmpfiles += wav_files + jam_files + txt_files
         for i, sc in enumerate(generators):
             generators[i].generate(
-                wav_files[i].name, jam_files[i].name, txt_path=txt_files[i].name,
-                    disable_instantiation_warnings=True
+                wav_files[i].name, jam_files[i].name,
+                txt_path=txt_files[i].name,
+                disable_instantiation_warnings=True
             )
 
         audio = [soundfile.read(wav_file.name)[0] for wav_file in wav_files]
@@ -1693,15 +1813,16 @@ def _compare_generators(generators, atol=1e-4, rtol=1e-8):
 
         for t in txt_data:
             assert np.allclose([float(x) for x in t[:, 0]],
-                                [float(x) for x in regtxt_data[:, 0]])
+                               [float(x) for x in regtxt_data[:, 0]])
             assert np.allclose([float(x) for x in t[:, 1]],
-                                [float(x) for x in regtxt_data[:, 1]])
+                               [float(x) for x in regtxt_data[:, 1]])
             # compare labels
             assert (t[:, 2] == regtxt_data[:, 2]).all()
 
 
 def _create_scaper_with_random_seed(seed):
-    sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH, random_state=deepcopy(seed))
+    sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH,
+                       random_state=deepcopy(seed))
     sc.ref_db = -50
     sc.sr = 44100
 
@@ -1751,10 +1872,13 @@ def test_generate_audio():
             REG_WAV_PATH = TEST_PATHS[sr]['REG'].wav
             REG_BGONLY_WAV_PATH = TEST_PATHS[sr]['REG_BGONLY'].wav
             REG_REVERB_WAV_PATH = TEST_PATHS[sr]['REG_REVERB'].wav
-            _test_generate_audio(sr, REG_WAV_PATH, REG_BGONLY_WAV_PATH, REG_REVERB_WAV_PATH, n_ch)
+            _test_generate_audio(sr, REG_WAV_PATH, REG_BGONLY_WAV_PATH,
+                                 REG_REVERB_WAV_PATH, n_ch)
 
 
-def _test_generate_audio(SR, REG_WAV_PATH, REG_BGONLY_WAV_PATH, REG_REVERB_WAV_PATH, N_CHANNELS, atol=1e-4, rtol=1e-8):
+def _test_generate_audio(SR, REG_WAV_PATH, REG_BGONLY_WAV_PATH,
+                         REG_REVERB_WAV_PATH, N_CHANNELS, atol=1e-4,
+                         rtol=1e-8):
     # Regression test: same spec, same audio (not this will fail if we update
     # any of the audio processing techniques used (e.g. change time stretching
     # algorithm.
@@ -1877,7 +2001,8 @@ def _test_generate_audio(SR, REG_WAV_PATH, REG_BGONLY_WAV_PATH, REG_REVERB_WAV_P
             source_time=('const', 0))
 
         reverb = 0.2
-        jam = sc._instantiate(disable_instantiation_warnings=True, reverb=reverb)
+        jam = sc._instantiate(disable_instantiation_warnings=True,
+                              reverb=reverb)
         sc._generate_audio(wav_file.name, jam.annotations[0], reverb=reverb)
         # validate audio
         wav, sr = soundfile.read(wav_file.name, always_2d=True)
@@ -1941,7 +2066,8 @@ def create_scaper_scene_without_random_seed():
     return sc
 
 
-def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4, rtol=1e-8):
+def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4,
+                                   rtol=1e-8):
     sc = create_scaper_scene_without_random_seed()
     tmpfiles = []
 
@@ -1959,15 +2085,17 @@ def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4, rto
         isolated_events_path = 'tests/mix_events'
     with _delete_files(wav_file, isolated_events_path):
         jam = sc._instantiate(disable_instantiation_warnings=True)
-        sc._generate_audio(wav_file, jam.annotations[0], save_isolated_events=True,
+
+        sc._generate_audio(wav_file, jam.annotations[0],
+                           save_isolated_events=True,
                            isolated_events_path=isolated_events_path)
         source_directory = os.path.splitext(wav_file)[0] + '_events'
-
 
         isolated_events = []
         ann = jam.annotations.search(namespace='scaper')[0]
 
-        soundscape_audio, _ = soundfile.read(ann.sandbox.scaper.soundscape_audio_path)
+        soundscape_audio, _ = soundfile.read(
+            ann.sandbox.scaper.soundscape_audio_path)
         isolated_event_audio_paths = ann.sandbox.scaper.isolated_events_audio_path
         isolated_audio = []
 
@@ -1976,7 +2104,8 @@ def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4, rto
             'foreground': 0
         }
 
-        for event_spec, event_audio_path in zip(ann, isolated_event_audio_paths):
+        for event_spec, event_audio_path in zip(ann,
+                                                isolated_event_audio_paths):
             # event_spec contains the event description, label, etc
             # event_audio contains the path to the actual audio
 
@@ -1996,7 +2125,8 @@ def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4, rto
             # is an audio file with the same contents as what we expect
             _isolated_expected_audio, sr = soundfile.read(expected_path)
             _isolated_sandbox_audio, sr = soundfile.read(event_audio_path)
-            assert np.allclose(_isolated_sandbox_audio, _isolated_expected_audio)
+            assert np.allclose(_isolated_sandbox_audio,
+                               _isolated_expected_audio)
 
             # make sure the filename matches
             assert look_for == os.path.basename(event_audio_path)
@@ -2007,13 +2137,14 @@ def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4, rto
             isolated_audio.append(_isolated_sandbox_audio)
 
         # the sum of the isolated audio should sum to the soundscape
-        assert np.allclose(sum(isolated_audio), soundscape_audio, atol=1e-8, rtol=1e-8)
+        assert np.allclose(sum(isolated_audio), soundscape_audio, atol=1e-8,
+                           rtol=1e-8)
 
         jam = sc._instantiate(disable_instantiation_warnings=True)
 
         # Running with save_isolated_events = True and reverb not None raises a warning
         pytest.warns(ScaperWarning, sc._generate_audio, wav_file,
-                    jam.annotations[0], save_isolated_events=True, reverb=.5)
+                     jam.annotations[0], save_isolated_events=True, reverb=.5)
 
 
 def test_generate_isolated_events():
@@ -2031,7 +2162,6 @@ def test_generate():
 
 
 def _make_test_generate_scaper(SR):
-
     sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH)
     sc.ref_db = -50
     sc.sr = SR
@@ -2085,8 +2215,8 @@ def _make_test_generate_scaper(SR):
     return sc
 
 
-def _test_generate(SR, REG_WAV_PATH, REG_JAM_PATH, REG_TXT_PATH, atol=1e-4, rtol=1e-8):
-
+def _test_generate(SR, REG_WAV_PATH, REG_JAM_PATH, REG_TXT_PATH, atol=1e-4,
+                   rtol=1e-8):
     sc = _make_test_generate_scaper(SR)
 
     tmpfiles = []
@@ -2133,7 +2263,6 @@ def test_generate_return_api():
 
 def _test_generate_return_api(SR, REG_WAV_PATH, REG_JAM_PATH, REG_TXT_PATH,
                               atol=1e-4, rtol=1e-8):
-
     sc = _make_test_generate_scaper(SR)
 
     tmpfiles = []
@@ -2148,7 +2277,8 @@ def _test_generate_return_api(SR, REG_WAV_PATH, REG_JAM_PATH, REG_TXT_PATH,
         with backports.tempfile.TemporaryDirectory() as isolated_events_path:
             saved_events_path = os.path.join(isolated_events_path, 'original')
 
-            (soundscape_audio, soundscape_jam, annotation_list, event_audio_list) = \
+            (soundscape_audio, soundscape_jam, annotation_list,
+             event_audio_list) = \
                 sc.generate(audio_path=wav_file.name,
                             jams_path=jam_file.name,
                             txt_path=txt_file.name,
@@ -2193,10 +2323,13 @@ def _test_generate_return_api(SR, REG_WAV_PATH, REG_JAM_PATH, REG_TXT_PATH,
                 os.path.join(saved_events_path, x)
                 for x in sorted(os.listdir(saved_events_path))
             ]
-            orig_event_audio = [soundfile.read(x, always_2d=True)[0] for x in saved_event_files]
+            orig_event_audio = [soundfile.read(x, always_2d=True)[0] for x in
+                                saved_event_files]
 
-            for return_event, orig_event in zip(event_audio_list, orig_event_audio):
-                assert np.allclose(return_event, orig_event, atol=1e-8, rtol=rtol)
+            for return_event, orig_event in zip(event_audio_list,
+                                                orig_event_audio):
+                assert np.allclose(return_event, orig_event, atol=1e-8,
+                                   rtol=rtol)
 
 
 def test_scaper_off_by_one_with_jams():
@@ -2240,10 +2373,11 @@ def test_backwards_compat_for_duration():
             assert np.allclose(orig_audio, gen_audio)
 
             pytest.warns(ScaperWarning, scaper.generate_from_jams,
-                jam_without_orig_duration.name, gen_wav.name)
+                         jam_without_orig_duration.name, gen_wav.name)
 
 
-def _generate_soundscape_with_short_background(background_file, audio_path, jams_path, ref_db):
+def _generate_soundscape_with_short_background(background_file, audio_path,
+                                               jams_path, ref_db):
     with backports.tempfile.TemporaryDirectory() as tmpdir:
         subdir = os.path.join(tmpdir, 'audio')
         shutil.copytree(SHORT_BG_PATH, subdir)
@@ -2364,7 +2498,6 @@ def test_scaper_with_short_background():
 
 
 def test_clipping_and_normalization():
-
     for sr in [16000, 44100]:
         sc = scaper.Scaper(10, FG_PATH, BG_PATH, random_state=0)
         sc.sr = sr
@@ -2397,56 +2530,68 @@ def test_clipping_and_normalization():
 
         tmpfiles = []
         with _close_temp_files(tmpfiles):
-
             # Make sure a warning is raised when there's clipping
-            audio_path = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                     delete=True)
             tmpfiles.append(audio_path)
-            pytest.warns(ScaperWarning, sc.generate, audio_path, fix_clipping=False)
+            pytest.warns(ScaperWarning, sc.generate, audio_path,
+                         fix_clipping=False)
 
             # Make sure a second warning is raised if we're fixing the clipping
-            audio_path2 = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path2 = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                      delete=True)
             tmpfiles.append(audio_path2)
             with pytest.warns(None) as record:
                 sc.generate(audio_path2, fix_clipping=True)
 
             assert len(record) == 2
             assert str(record[0].message) == 'Soundscape audio is clipping!'
-            assert 'Peak normalization applied to fix clipping' in str(record[1].message)
+            assert 'Peak normalization applied to fix clipping' in str(
+                record[1].message)
 
             # Make sure we get a third warning when the scaling factor is < 0.05
-            audio_path3 = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path3 = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                      delete=True)
             tmpfiles.append(audio_path3)
             with pytest.warns(None) as record:
                 sc_extreme.generate(audio_path3, fix_clipping=True)
 
             assert len(record) == 3
             assert str(record[0].message) == 'Soundscape audio is clipping!'
-            assert 'Peak normalization applied to fix clipping' in str(record[1].message)
-            assert 'Scale factor for peak normalization is extreme' in str(record[2].message)
+            assert 'Peak normalization applied to fix clipping' in str(
+                record[1].message)
+            assert 'Scale factor for peak normalization is extreme' in str(
+                record[2].message)
 
             # PEAK NORMALIZATION TESTS
             # Make sure a warning is raised when there's clipping
-            audio_path4 = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path4 = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                      delete=True)
             tmpfiles.append(audio_path4)
             pytest.warns(ScaperWarning, sc.generate, audio_path4,
                          fix_clipping=False, peak_normalization=True)
 
             # Make sure a second warning is NOT raised if we're peak normalizing by default
-            audio_path5 = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path5 = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                      delete=True)
             tmpfiles.append(audio_path5)
             with pytest.warns(None) as record:
-                sc.generate(audio_path5, fix_clipping=False, peak_normalization=True)
+                sc.generate(audio_path5, fix_clipping=False,
+                            peak_normalization=True)
 
             assert len(record) == 1
             assert str(record[0].message) == 'Soundscape audio is clipping!'
 
             # Make sure we get two warnings when w're normalizing but not fixing
             # clipping explicitly and the scaling factor is < 0.05
-            audio_path6 = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+            audio_path6 = tempfile.NamedTemporaryFile(suffix='.wav',
+                                                      delete=True)
             tmpfiles.append(audio_path6)
             with pytest.warns(None) as record:
-                sc_extreme.generate(audio_path6, fix_clipping=False, peak_normalization=True)
+                sc_extreme.generate(audio_path6, fix_clipping=False,
+                                    peak_normalization=True)
 
             assert len(record) == 2
             assert str(record[0].message) == 'Soundscape audio is clipping!'
-            assert 'Scale factor for peak normalization is extreme' in str(record[1].message)
+            assert 'Scale factor for peak normalization is extreme' in str(
+                record[1].message)
