@@ -205,6 +205,7 @@ def generate_from_jams(jams_infile,
     # Set synthesis parameters
     if 'sr' in ann.sandbox.scaper: # backwards compatibility
         sc.sr = ann.sandbox.scaper['sr']
+    # sc.forced_protected_labels = ann.sandbox.scaper['forced_protected_labels']
     sc.ref_db = ann.sandbox.scaper['ref_db']
     sc.n_channels = ann.sandbox.scaper['n_channels']
     sc.fade_in_len = ann.sandbox.scaper['fade_in_len']
@@ -974,7 +975,8 @@ class Scaper(object):
         it elsewhere.
     '''
 
-    def __init__(self, duration, fg_path, bg_path, protected_labels=[], random_state=None):
+    def __init__(self, duration, fg_path, bg_path, protected_labels=[],
+                 forced_protected_labels=None, random_state=None):
         '''
         Create a Scaper object.
 
@@ -1028,6 +1030,9 @@ class Scaper(object):
         # Start with empty used labels
         self.global_used_labels = []
         
+        # Store initial duration
+        self.ini_duration = self.duration
+
         # Validate paths and set
         expanded_fg_path = os.path.expanduser(fg_path)
         expanded_bg_path = os.path.expanduser(bg_path)
@@ -1042,8 +1047,15 @@ class Scaper(object):
         _populate_label_list(self.fg_path, self.fg_labels)
         _populate_label_list(self.bg_path, self.bg_labels)
 
+        # forced_protected_labels behave as protected_labels but they override
+        # the soundscape if they are longer.
+        if forced_protected_labels is None:
+            self.forced_protected_labels = []
+        else:
+            self.forced_protected_labels = forced_protected_labels
+
         # Copy list of protected labels
-        self.protected_labels = protected_labels[:]
+        self.protected_labels = protected_labels + self.forced_protected_labels
 
         # Get random number generator
         self.random_state = _check_random_state(random_state)
@@ -1103,6 +1115,20 @@ class Scaper(object):
         event specification instead of the foreground specification.
         '''
         self.global_used_labels = []
+        
+    def reset_duration(self):
+        '''
+       Resets the duration soundscape specification to as it is when
+       the Scaper object is initialized in the first place. This allows the same
+       Scaper object to be used over and over again to generate new soundscapes
+       with the same underlying settings (e.g. `ref_db`, `num_channels`, and so on.)
+
+       See Also
+       --------
+       Scaper.reset_bg_event_spec : Same functionality but resets the background
+       event specification instead of the foreground specification.
+        '''
+        self.duration = self.ini_duration
     
     def reset_all(self):
         '''
@@ -1120,6 +1146,7 @@ class Scaper(object):
         self.reset_bg_event_spec()
         self.reset_global_used()
         self.reset_global_used_labels()
+        self.reset_duration()
 
     def set_random_state(self, random_state):
         '''
@@ -1341,7 +1368,6 @@ class Scaper(object):
     def _instantiate_event(self, event, isbackground=False,
                            allow_repeated_label=True,
                            allow_repeated_source=True,
-                           allow_global_repeated_source=True,
                            used_labels=[],
                            used_source_files=[],
                            disable_instantiation_warnings=False):
@@ -1504,14 +1530,24 @@ class Scaper(object):
         # Get the duration of the source audio file
         source_duration = soundfile.info(source_file).duration
 
-        # If this is a background event, the event duration is the 
+        # If this is a background event, the event duration is the
         # duration of the soundscape.
         if isbackground:
             event_duration = self.duration
+
+        # If the foreground event's label is in the forced_protected list,
+        # use the source file's duration without modification and change the
+        # soundscape duration to match the longest foreground
+        elif label in self.forced_protected_labels:
+            event_duration = source_duration
+            if self.duration < source_duration:
+                self.duration = source_duration
+
         # If the foreground event's label is in the protected list, use the
         # source file's duration without modification.
         elif label in self.protected_labels:
             event_duration = source_duration
+
         else:
             # determine event duration
             # For background events the duration is fixed to self.duration
@@ -1688,9 +1724,7 @@ class Scaper(object):
         return instantiated_event
 
     def _instantiate(self, allow_repeated_label=True,
-                     allow_repeated_source=True,
-                     allow_global_repeated_source=True,
-                     reverb=None,
+                     allow_repeated_source=True, reverb=None,
                      disable_instantiation_warnings=False):
         '''
         Instantiate a specific soundscape in JAMS format based on the current
@@ -1747,7 +1781,6 @@ class Scaper(object):
                 isbackground=True,
                 allow_repeated_label=allow_repeated_label,
                 allow_repeated_source=allow_repeated_source,
-                allow_global_repeated_source=allow_global_repeated_source,
                 used_labels=bg_labels,
                 used_source_files=bg_source_files,
                 disable_instantiation_warnings=disable_instantiation_warnings)
@@ -1769,7 +1802,6 @@ class Scaper(object):
                 isbackground=False,
                 allow_repeated_label=allow_repeated_label,
                 allow_repeated_source=allow_repeated_source,
-                allow_global_repeated_source=allow_global_repeated_source,
                 used_labels=fg_labels,
                 used_source_files=fg_source_files,
                 disable_instantiation_warnings=disable_instantiation_warnings)
@@ -1805,6 +1837,9 @@ class Scaper(object):
             fg_labels=self.fg_labels,
             bg_labels=self.bg_labels,
             protected_labels=self.protected_labels,
+            # TODO : add forced_protected_labels to the annotation and edit
+            #  tests accordingly
+            # forced_protected_labels=self.forced_protected_labels,
             sr=self.sr,
             ref_db=self.ref_db,
             n_channels=self.n_channels,

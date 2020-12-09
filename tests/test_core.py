@@ -111,6 +111,7 @@ def _compare_scaper_jams(jam, regjam,
     excluded_scaper_sandbox_keys = [
         'bg_spec', 'fg_spec', 'scaper_version', 'soundscape_audio_path',
         'isolated_events_audio_path', 'allow_global_repeated_source'
+
     ]
     excluded_scaper_sandbox_keys.extend(exclude_additional_scaper_sandbox_keys)
 
@@ -122,11 +123,10 @@ def _compare_scaper_jams(jam, regjam,
                 'Unequal values for "{}"'.format(k))
 
     # to compare specs need to covert raw specs to list of lists
-    bg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e
-                    in
+
+    bg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e in
                     ann.sandbox.scaper['bg_spec']]
-    fg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e
-                    in
+    fg_spec_list = [[list(x) if isinstance(x, tuple) else x for x in e] for e in
                     ann.sandbox.scaper['fg_spec']]
 
     assert (fg_spec_list == regann.sandbox.scaper['fg_spec'])
@@ -1065,7 +1065,6 @@ def test_validate_time():
     # truncnorm can't have negative min value
     __test_bad_time_tuple(('truncnorm', 0, 1, -1, 1))
 
-
 def test_validate_duration():
     def __test_bad_duration_tuple(duration_tuple):
         pytest.raises(ScaperError, scaper.core._validate_duration,
@@ -1239,12 +1238,14 @@ def test_reset_all():
                  snr=('uniform', 10, 20),
                  pitch_shift=('normal', 0, 1),
                  time_stretch=('uniform', 0.8, 1.2))
+
     sc.add_background(("const", "park"), ("choose", []), ("const", 0))
     sc.reset_all()
     assert not sc.global_used_labels
     assert not sc.global_used_source_files
     assert not sc.fg_spec
     assert not sc.bg_spec
+    assert sc.duration = 10.0
 
 
 def test_reset_fg_bg_event_spec():
@@ -1285,7 +1286,7 @@ def test_reset_fg_bg_event_spec():
     # start over, this time using reset_bg_spec too.
     sc.reset_fg_event_spec()
 
-    # there should be one background event and one foreground event now 
+    # there should be one background event and one foreground event now
     _add_fg_event(sc)
     _add_bg_event(sc)
     assert len(sc.fg_spec) == 1
@@ -1359,6 +1360,38 @@ def test_scaper_add_event():
                                   pitch_shift=('normal', 0, 1),
                                   time_stretch=('uniform', 0.8, 1.2))
     assert sc.fg_spec[0] == fg_event_expected
+
+
+def test_override_duration():
+    fg_event = EventSpec(label=('const', 'siren'),
+                         source_file=('choose', []),
+                         source_time=('const', 0),
+                         event_time=('uniform', 0, 9),
+                         event_duration=('truncnorm', 2, 1, 1, 3),
+                         snr=('uniform', 10, 20),
+                         role='foreground',
+                         pitch_shift=None,
+                         time_stretch=None)
+    # forced_protected_labels override the soundscape duration if they are longer
+    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH,
+                       forced_protected_labels=['human_voice'])
+    fg_event10 = fg_event._replace(
+        label=('const', 'human_voice'),
+        source_file=('const', 'tests/data/audio/foreground/human_voice/'
+                              '42-Human-Vocal-Voice-taxi-2_edit.wav'),
+        source_time=('const', 0.3),
+        event_duration=('const', 0.4))
+    instantiated_event = sc._instantiate_event(
+        fg_event10, disable_instantiation_warnings=True)
+    assert np.allclose(instantiated_event.event_duration, 0.806236, atol=1e-5)
+    assert 'human_voice' in sc.forced_protected_labels
+
+
+def test_reset_duration():
+    sc = scaper.Scaper(0.5, fg_path=FG_PATH, bg_path=BG_PATH)
+    sc.duration = 0.7
+    sc.reset_duration()
+    assert  sc.duration == 0.5
 
 
 def test_scaper_instantiate_event():
@@ -1479,7 +1512,7 @@ def test_scaper_instantiate_event():
 
     # Protected labels must have original source duration and source time 0
     sc = scaper.Scaper(10.0, fg_path=FG_PATH, bg_path=BG_PATH,
-                       protected_labels='human_voice')
+                       protected_labels=['human_voice'])
     fg_event10 = fg_event._replace(
         label=('const', 'human_voice'),
         source_file=('const', 'tests/data/audio/foreground/human_voice/'
@@ -1557,16 +1590,16 @@ def test_scaper_instantiate_event():
                                    source_time=('truncnorm', 20, 2, 20, 20))
     pytest.warns(ScaperWarning, sc._instantiate_event, fg_event5e)
 
-    # 'normal' random draw above mean with mean = source_duration - event_duration 
+    # 'normal' random draw above mean with mean = source_duration - event_duration
     # source_time + event_duration > source_duration: warning
     fg_event5f = fg_event._replace(event_time=('const', 0),
                                    event_duration=('const', 8),
                                    source_time=('normal', 18.25, 2))
 
     def _repeat_instantiation(event):
-        # keep going till we hit a draw that covers when the draw exceeds 
+        # keep going till we hit a draw that covers when the draw exceeds
         # source_duration - event_duration (18.25). Use max_draws
-        # just in case so that testing is guaranteed to terminate. 
+        # just in case so that testing is guaranteed to terminate.
         source_time = 0
         num_draws = 0
         max_draws = 1000
@@ -1710,7 +1743,7 @@ def test_generate_with_seeding(atol=1e-4, rtol=1e-8):
 
 def test_set_random_state(atol=1e-4, rtol=1e-8):
     # test a scaper generator with different random seeds. this time use
-    # set_random_state to change the seed instead 
+    # set_random_state to change the seed instead
     seeds = [
         0, 10, 20,
         scaper.util._check_random_state(0),
@@ -2052,6 +2085,7 @@ def _test_generate_isolated_events(SR, isolated_events_path=None, atol=1e-4,
         isolated_events_path = 'tests/mix_events'
     with _delete_files(wav_file, isolated_events_path):
         jam = sc._instantiate(disable_instantiation_warnings=True)
+
         sc._generate_audio(wav_file, jam.annotations[0],
                            save_isolated_events=True,
                            isolated_events_path=isolated_events_path)
